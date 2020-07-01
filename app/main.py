@@ -6,14 +6,16 @@ import logging
 import time
 from flask import request
 import json
+from expiring_dict import ExpiringDict
+import time
 
 app = Flask(__name__)
 
 access_token = ""
 logger = logging.getLogger(__name__)
 
-channels = {}
-broadcasters = {}
+channels = ExpiringDict(300)
+broadcasters = ExpiringDict(300)
 
 CLIENT_ID = "ao93ev500wqpaczsn55vca74kli26z"
 CLIENT_SECRETE = "wdcac9rjzje6lwxczkffwz1woj5iw9"
@@ -62,21 +64,23 @@ def channel(channel):
     global access_token
     global channels
 
-    headers = {
-        "Authorization": "Bearer " + access_token,
-        "client-id": "ao93ev500wqpaczsn55vca74kli26z",
-    }
+    if channel in channels:
+        return channels[channel]
+    else:
+        headers = {
+            "Authorization": "Bearer " + access_token,
+            "client-id": CLIENT_ID,
+        }
+        results = requests.get(
+            f"https://api.twitch.tv/helix/search/channels?query={channel}&first=1",
+            headers=headers,
+        )
+        json_results = results.json()
+        # channels[json_results["id"]] = json_results
 
-    results = requests.get(
-        f"https://api.twitch.tv/helix/search/channels?query={channel}&first=1",
-        headers=headers,
-    )
-    json_results = results.json()
-    # channels[json_results["id"]] = json_results
-
-    id = json_results["data"][0]["id"]
-    channels[id] = json_results
-    return channels
+        id = json_results["data"][0]["id"]
+        channels[channel] = json_results
+        return channels[channel]
 
 
 @app.route("/broadcaster/<broadcaster_id>", methods=["GET"])
@@ -84,21 +88,22 @@ def broadcaster(broadcaster_id):
     global access_token
     global broadcasters
     global CLIENT_ID
+    if broadcaster_id in broadcasters:
+        return broadcasters[broadcast_id]
+    else:
+        headers = {
+            "Authorization": "Bearer " + access_token,
+            "client-id": CLIENT_ID,
+        }
 
-    headers = {
-        "Authorization": "Bearer " + access_token,
-        "client-id": CLIENT_ID,
-    }
+        results = requests.get(
+            f"https://api.twitch.tv/helix/channels?broadcaster_id={broadcaster_id}",
+            headers=headers,
+        )
+        json_results = results.json()
 
-    results = requests.get(
-        f"https://api.twitch.tv/helix/channels?broadcaster_id={broadcaster_id}",
-        headers=headers,
-    )
-    json_results = results.json()
-    # channels[json_results["id"]] = json_results
-
-    broadcasters[broadcaster_id] = json_results
-    return channels
+        broadcasters[broadcaster_id] = json_results
+        return broadcasters[broadcaster_id]
 
 
 def set_interval(callback, time, once=False):
@@ -115,3 +120,11 @@ def set_interval(callback, time, once=False):
 @app.route("/")
 def index():
     return "<h1>Welcome to our server !!</h1>"
+
+
+if __name__ == "__main__":
+
+    cache["abc123"] = "some value"
+    for i in range(0, 20):
+        print("abc123" in cache)
+        time.sleep(0.1)
