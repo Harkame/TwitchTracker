@@ -115,8 +115,3 @@ def set_interval(callback, time, once=False):
 @app.route("/")
 def index():
     return "<h1>Welcome to our server !!</h1>"
-
-
-if __name__ == "__main__":
-    activate_job()
-    app.run()
